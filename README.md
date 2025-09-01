@@ -7,6 +7,9 @@
 5. 노이즈를 제외한 데이터에 대해 Silhouette Score, Davies-Bouldin Index, Calinski-Harabasz Score 세 가지 지표를 활용해 클러스터 품질을 평가
 
 # korpat_clustering.py
+"KorPatElectra 임베딩 품질 평가"
+1. 
+
 
 # classification.py
 " KorPatElectra 임베딩 기반 클러스터링 vs LSA 임베딩 기반 클러스터링에 대해 각각의 분류 가능성(classifiability)을 RandomForestClassifier를 통해 비교 분석"
