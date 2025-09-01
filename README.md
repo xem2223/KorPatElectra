@@ -20,6 +20,21 @@
 | 5  | Train/Test 나누고 RandomForest 학습               |
 | 6  | Confusion Matrix + Classification Report 출력  |
 
+# Cross-evaluation.py
+"두 가지 임베딩 (KorPatElectra vs LSA)을 비교하기 위해,
+서로 다른 임베딩 공간에서 생성된 클러스터 라벨을 상대 임베딩으로 예측 가능한지 실험"
+
+| 방향            | Accuracy | Macro F1 | 해석 요약                        |
+| ------------- | -------- | -------- | ---------------------------- |
+| **LSA → KPE** | 51%      | 0.33     | KPE 구조는 LSA에서 재현 어려움         |
+| **KPE → LSA** | 61%      | 0.57     | LSA 구조는 KPE 공간에서 어느 정도 재현 가능 |
+
+KorPatElectra 임베딩 → LSA 군집 예측은 정확도 0.61, F1-score 0.57로 전반적으로 높은 분류 성능을 보였다. 이는 KorPatElectra 임베딩이 LSA 기반 클러스터 구조를 보다 잘 설명할 수 있는 의미 정보를 내포하고 있음을 시사한다.
+
+LSA 임베딩 → KorPatElectra 군집 예측은 F1-score가 0.33에 그쳤으며, 특히 recall이 현저히 낮은 결과를 보였다. 이는 LSA 임베딩이 KorPatElectra 기반 클러스터의 구조를 재현하기에 정보 손실이 크고, 의미 표현력이 제한적이라는 한계를 드러낸다.
+
+결과적으로, KorPatElectra 임베딩은 LSA 군집 구조를 일정 부분 재현할 수 있지만, 반대의 경우는 어렵다는 점이 확인되었다. 이는 KorPatElectra가 더 풍부하고 정교한 의미 기반 표현을 학습하고 있음을 보여주는 근거가 된다.
+
 # trend_pred.py
 "KorPatElectra 기반 임베딩 + UMAP + HDBSCAN 클러스터링을 통해, 유사한 해결 과제와 수단을 가진 특허들을 그룹화. 이후 KeyBERT를 활용하여 각 기술 영역별 핵심 키워드를 도출하였으며, 이를 통해 클러스터별 기술 트렌드 파악 및 전략 수립 가능"
 
