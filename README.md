@@ -5,8 +5,9 @@
 
 # classification.py
 " KorPatElectra 임베딩 기반 클러스터링 vs LSA 임베딩 기반 클러스터링에 대해 각각의 분류 가능성(classifiability)을 RandomForestClassifier를 통해 비교 분석"
----
+
 잘 분리된 클러스터라면 → 높은 분류 정확도
+
 불명확한 클러스터라면 → 낮은 분류 정확도
 
 
