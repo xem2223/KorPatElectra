@@ -35,6 +35,8 @@ LSA 임베딩 → KorPatElectra 군집 예측은 F1-score가 0.33에 그쳤으�
 
 결과적으로, KorPatElectra 임베딩은 LSA 군집 구조를 일정 부분 재현할 수 있지만, 반대의 경우는 어렵다는 점이 확인되었다. 이는 KorPatElectra가 더 풍부하고 정교한 의미 기반 표현을 학습하고 있음을 보여주는 근거가 된다.
 
+# retrieval.py
+
 # trend_pred.py
 "KorPatElectra 기반 임베딩 + UMAP + HDBSCAN 클러스터링을 통해, 유사한 해결 과제와 수단을 가진 특허들을 그룹화. 이후 KeyBERT를 활용하여 각 기술 영역별 핵심 키워드를 도출하였으며, 이를 통해 클러스터별 기술 트렌드 파악 및 전략 수립 가능"
 
