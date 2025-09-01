@@ -36,7 +36,7 @@ LSA 임베딩 → KorPatElectra 군집 예측은 F1-score가 0.33에 그쳤으�
 결과적으로, KorPatElectra 임베딩은 LSA 군집 구조를 일정 부분 재현할 수 있지만, 반대의 경우는 어렵다는 점이 확인되었다. 이는 KorPatElectra가 더 풍부하고 정교한 의미 기반 표현을 학습하고 있음을 보여주는 근거가 된다.
 
 # retrieval.py
-"“쿼리 → 문서” 검색 성능을 KPE vs LSA로 비교·평가"
+"쿼리 → 문서” 검색 성능을 KPE vs LSA로 비교·평가"
 1. 두 가지 쿼리(“이미지 생성”, “텍스트 생성”)와 각 쿼리에 대응되는 정답 문서 인덱스 집합을 정의
 2. 쿼리에 대해서도 각각 KorPatElectra 임베딩과 LSA 임베딩을 동일한 파이프라인으로 변환하여 생성
 3. NearestNeighbors를 활용해 코사인 거리 기반 Top-k 유사 문서를 검색
