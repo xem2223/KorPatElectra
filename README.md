@@ -1,7 +1,7 @@
 # lsa_clustering.py
 
 
-#korpat_clustering.py
+# korpat_clustering.py
 
 
 # trend_pred.py
