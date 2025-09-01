@@ -1,5 +1,10 @@
 # lsa_clustering.py
-
+"LSA 기반으로 임베딩 품질 평가"
+1. 특허 데이터(특허.csv)를 불러와 텍스트 컬럼(abstract)을 추출
+2. TF-IDF → TruncatedSVD → Normalizer 과정을 거쳐 문서의 LSA 임베딩을 생성
+3. 생성된 임베딩은 UMAP을 이용해 2차원으로 차원 축소되며, 축소된 표현을 기반으로 HDBSCAN 군집화를 수행
+4. 군집화 결과는 데이터프레임에 cluster_lsa 컬럼으로 추가되고, 전체 문서 중 노이즈(-1) 비율 계산
+5. 노이즈를 제외한 데이터에 대해 Silhouette Score, Davies-Bouldin Index, Calinski-Harabasz Score 세 가지 지표를 활용해 클러스터 품질을 평가
 
 # korpat_clustering.py
 
