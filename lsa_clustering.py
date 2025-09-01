@@ -89,18 +89,3 @@ else:
 CSV_OUT="클러스터링_LSA.csv"
 df.to_csv(CSV_OUT, index=False)
 print(f"Clustered data saved to: {CSV_OUT}")
-
-
-
-"""
-Generating LSA embeddings...
-Reducing dimensions with UMAP for LSA...
-Clustering with HDBSCAN on LSA embeddings...
-LSA Noise points: 881 / 2883 (30.56%)
-
-Evaluating clustering quality on LSA UMAP embeddings (noise excluded)...
-Silhouette Score:    0.4512
-Davies-Bouldin Index: 0.7535
-Calinski-Harabasz:    935.7707
-Clustered data saved to: 클러스터링_LSA.csv
-"""
