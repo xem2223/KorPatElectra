@@ -1,94 +1,123 @@
 import os
+import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 import torch
-import umap
-import hdbscan
+
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
-import collections
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import Normalizer
+from sklearn.neighbors import NearestNeighbors
 
-# -------------- 데이터 로드 및 전처리 --------------
+# ------------------------
+# 0) 설정
+# ------------------------
+CSV_IN   = os.getenv("CSV_IN", "OS_Matrics[ED].csv")
+MODEL_ID = os.getenv("MODEL_ID", "KIPI-ai/KorPatElectra")
+HF_TOKEN = os.getenv("HF_TOKEN")  # 반드시 환경변수로 설정할 것
+
+assert HF_TOKEN is not None, "환경변수 HF_TOKEN을 설정하세요 (export HF_TOKEN=...)"
+
+# ------------------------
+# 1) 데이터 로드 (단일 컬럼 규격화)
+# ------------------------
 df = pd.read_csv(CSV_IN)
+df = df.reset_index(drop=True)
 TEXT_COLUMN = '요약' if '요약' in df.columns else df.columns[0]
-texts = df[TEXT_COLUMN].fillna("").tolist()
+texts = df[TEXT_COLUMN].fillna("").astype(str).tolist()
 
-# -------------- KorPatElectra 모델 로드 --------------
+# ------------------------
+# 2) KorPatElectra 임베딩
+# ------------------------
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SentenceTransformer(MODEL_ID, use_auth_token=HF_TOKEN).to(device)
-X_kpe  = model.encode(texts, batch_size=128, show_progress_bar=True, device=device)
+X_kpe = model.encode(texts, batch_size=128, show_progress_bar=True, device=device)
 
-# -------------- LSA 임베딩 생성 --------------
-print("Generating LSA embeddings...")
-tfidf       = TfidfVectorizer(max_df=0.8, min_df=5, ngram_range=(1,2))
-X_tfidf     = tfidf.fit_transform(texts)               # (n_docs × n_terms)
-svd         = TruncatedSVD(n_components=768, random_state=42)
-X_lsa_raw   = svd.fit_transform(X_tfidf)               # (n_docs × 768)
-normalizer  = Normalizer(copy=False)
-X_lsa       = normalizer.fit_transform(X_lsa_raw)      # 코사인 유사도용 정규화
+# ------------------------
+# 3) LSA 임베딩 (TF-IDF → SVD → Normalizer, 쿼리에도 동일 변환 적용)
+# ------------------------
+tfidf = TfidfVectorizer(max_df=0.8, min_df=5, ngram_range=(1, 2))
+X_tfidf = tfidf.fit_transform(texts)
 
-query = "텍스트 생성"
-print(f"쿼리: {query}\n")
+n_terms = X_tfidf.shape[1]
+n_comp = min(768, n_terms - 1) if n_terms > 1 else 1
+svd = TruncatedSVD(n_components=n_comp, random_state=42)
+X_lsa_raw = svd.fit_transform(X_tfidf)
+normalizer = Normalizer(copy=False)
+X_lsa = normalizer.fit_transform(X_lsa_raw)  # 문서 정규화
 
-for i, text in enumerate(texts):
-    if any(term in text for term in ["텍스트"]):  # 키워드 매칭 예시
-        print(f"[{i}] {text[:100]}...")
-
-# 사용자 쿼리 리스트
+# ------------------------
+# 4) 쿼리와 정답 세트
+# ------------------------
 query_texts = [
-    "딥러닝을 이용한 고해상도 이미지 생성 방법",      # 이미지 생성
-    "텍스트 생성을 위한 언어 모델을 생성하기 위한 방법"              # 텍스트 생성
+    "딥러닝을 이용한 고해상도 이미지 생성 방법",     # 이미지 생성
+    "텍스트 생성을 위한 언어 모델을 생성하기 위한 방법"  # 텍스트 생성
 ]
-
-# 각 쿼리에 대응되는 정답 문서 인덱스 (사람이 직접 선정)
-# 예: df['abstract']에서 의미적으로 가장 관련 있는 문서 index들
 ground_truth = {
-    0: [27, 76, 744, 880, 871, 1076, 1890, 1692, 383, 991, 1994 ],     # "이미지 생성" 쿼리에 대한 정답 인덱스들
-    1: [489, 1621, 1972, 744,763, 888, 1074,1751, 1798]         # "텍스트 생성" 쿼리에 대한 정답 인덱스들
+    0: [27, 76, 744, 880, 871, 1076, 1890, 1692, 383, 991, 1994],
+    1: [489, 1621, 1972, 744, 763, 888, 1074, 1751, 1798],
 }
+# 유효 인덱스 필터 (ground truth가 df 길이 초과하는 경우 대비)
+N = len(df)
+ground_truth = {qi: [idx for idx in idxs if 0 <= idx < N] for qi, idxs in ground_truth.items()}
 
-# KorPatElectra 임베딩
-query_emb_kpe = model.encode(query_texts, device=device)
+# ------------------------
+# 5) 쿼리 임베딩 (KPE/LSA 모두 코퍼스 파이프라인과 동일 처리)
+# ------------------------
+# KPE
+query_emb_kpe = model.encode(query_texts, batch_size=8, device=device)
+query_emb_kpe = l2norm(query_emb_kpe)
 
-# LSA 임베딩
-query_tfidf = tfidf.transform(query_texts)
-query_emb_lsa_raw = svd.transform(query_tfidf)
-query_emb_lsa = Normalizer(copy=False).fit_transform(query_emb_lsa_raw)
+# LSA
+query_tfidf = tfidf.transform(query_texts)      # fit() 금지, 반드시 transform()
+query_lsa_raw = svd.transform(query_tfidf)      # 코퍼스에 맞춰 학습된 SVD 사용
+query_emb_lsa = normalizer.transform(query_lsa_raw)
 
-# 검색 및 평가 함수
-def evaluate_queries(query_emb, doc_emb, ground_truth, model_name="Model", k=10):
-    from sklearn.metrics.pairwise import cosine_similarity
-    import numpy as np
+# ------------------------
+# 6) 평가 함수 (NearestNeighbors로 Top-k만)
+# ------------------------
+def evaluate_queries_knn(query_emb, doc_emb, ground_truth, model_name="Model", k=10):
+    nbrs = NearestNeighbors(n_neighbors=min(k, len(doc_emb)), metric='cosine')
+    nbrs.fit(doc_emb)
 
-    sims = cosine_similarity(query_emb, doc_emb)
-    scores, recalls, mrrs = [], [], []
+    Pk_list, Rk_list, MRRk_list = [], [], []
+    per_query = []
 
-    for i, sim_row in enumerate(sims):
-        true_set = set(ground_truth.get(i, []))
+    for qi in range(len(query_emb)):
+        true_set = set(ground_truth.get(qi, []))
         if not true_set:
             continue
 
-        topk_idx = np.argsort(sim_row)[::-1][:k]
-        hits = [1 if idx in true_set else 0 for idx in topk_idx]
+        distances, indices = nbrs.kneighbors(query_emb[qi:qi+1], return_distance=True)
+        topk_idx = indices[0].tolist()
 
-        precision = sum(hits) / k
-        recall = sum(hits) / len(true_set)
+        hits = [1 if idx in true_set else 0 for idx in topk_idx]
+        Pk = sum(hits) / len(topk_idx)
+        Rk = sum(hits) / max(1, len(true_set))
+
+        # MRR@k
         mrr = 0.0
         for rank, h in enumerate(hits, start=1):
-            if h:
+            if h == 1:
                 mrr = 1.0 / rank
                 break
 
-        scores.append(precision)
-        recalls.append(recall)
-        mrrs.append(mrr)
+        Pk_list.append(Pk)
+        Rk_list.append(Rk)
+        MRRk_list.append(mrr)
+        per_query.append((qi, Pk, Rk, mrr, topk_idx))
 
-    print(f"\n📌 [{model_name}] Query-based Evaluation (Top-{k})")
-    print(f"Precision@{k}: {np.mean(scores):.4f}")
-    print(f"Recall@{k}:    {np.mean(recalls):.4f}")
-    print(f"MRR@{k}:       {np.mean(mrrs):.4f}")
+    print(f"\n📌 [{model_name}] Query-based Evaluation (Top-{len(topk_idx)})")
+    print(f"Precision@k: {np.mean(Pk_list):.4f}")
+    print(f"Recall@k:    {np.mean(Rk_list):.4f}")
+    print(f"MRR@k:       {np.mean(MRRk_list):.4f}")
 
-evaluate_queries(query_emb_kpe, X_kpe, ground_truth, model_name="KorPatElectra")
-evaluate_queries(query_emb_lsa, X_lsa, ground_truth, model_name="LSA")
+    # 각 쿼리별 상세
+    for qi, Pk, Rk, mrr, idxs in per_query:
+        print(f"  - Q{qi}: P@k={Pk:.3f}, R@k={Rk:.3f}, MRR@k={mrr:.3f}, topk_head={idxs[:5]}")
+
+# ------------------------
+# 7) 실행
+# ------------------------
+evaluate_queries_knn(query_emb_kpe, X_kpe, ground_truth, model_name="KorPatElectra", k=10)
+evaluate_queries_knn(query_emb_lsa, X_lsa, ground_truth, model_name="LSA",           k=10)
