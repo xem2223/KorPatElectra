@@ -8,8 +8,11 @@
 
 # korpat_clustering.py
 "KorPatElectra 임베딩 품질 평가"
-1. 
-
+1. 특허 데이터(특허.csv)를 불러와 텍스트 컬럼(abstract)을 추출
+2. 임베딩 생성(KorPatElectra): KIPI-ai/KorPatElectra로 모든 문서 임베딩 계산
+3. 차원 축소(UMAP): 코사인 거리 기반으로 2차원 임베딩으로 축소
+4. 군집화(HDBSCAN): UMAP 임베딩을 입력으로 밀도 기반 군집화(노이즈는 -1)
+5. 품질 평가: 노이즈 제외 후 Silhouette / Davies-Bouldin / Calinski-Harabasz 계산
 
 # classification.py
 " KorPatElectra 임베딩 기반 클러스터링 vs LSA 임베딩 기반 클러스터링에 대해 각각의 분류 가능성(classifiability)을 RandomForestClassifier를 통해 비교 분석"
